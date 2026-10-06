@@ -1,28 +1,56 @@
-\documentclass{article}
-\usepackage{graphicx} % Required for inserting images
-\usepackage{amsmath}
-\usepackage{url}
+\documentclass[11pt]{article}
 
-\title{ActToThink}
-\author{Qining Shen}
-\date{October 2026}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+
+\definecolor{sectionblue}{RGB}{35,70,105}
+
+\titleformat{\section}
+  {\large\bfseries\color{sectionblue}}
+  {}{0pt}{}
+\titlespacing*{\section}{0pt}{1.25em}{0.5em}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlength{\abovedisplayskip}{0.7em}
+\setlength{\belowdisplayskip}{0.7em}
 
 \begin{document}
 
-\maketitle
+\begin{center}
+    {\LARGE\bfseries ActToThink\par}
+    \vspace{0.35em}
+    {\large Qining Shen\par}
+    \vspace{0.15em}
+    {\small October 2026\par}
+\end{center}
 
-\section{Introduction}
-Large language models (LLMs) have made rapid progress in reasoning in recent years, with methods such as Chain-of-Thought prompting and ReAct showing that language models can perform multi-step reasoning and interleave reasoning with actions. In particular, ReAct allows an agent to alternate between reasoning traces and interactions with an external environment, making LLMs increasingly relevant to sequential decision-making tasks.
+\vspace{0.5em}
+\hrule
+\vspace{0.9em}
 
-These advances have also motivated increasing interest in combining LLM-based reasoning with embodied intelligence. In robotic systems, LLMs can use natural-language instructions and environmental observations to generate high-level plans and action sequences, providing a flexible interface between language understanding, reasoning, and physical execution. Existing work has explored this idea in navigation, manipulation, and long-horizon task planning.
+\section{Background and Motivation}
+
+Large language models (LLMs) have made rapid progress in reasoning in recent years, with methods such as Chain-of-Thought prompting~\cite{wei2022cot} and ReAct~\cite{yao2023react} showing that language models can perform multi-step reasoning and interleave reasoning with actions. In particular, ReAct allows an agent to alternate between reasoning traces and interactions with an external environment, making LLMs increasingly relevant to sequential decision-making tasks.
+
+These advances have also motivated increasing interest in combining LLM-based reasoning with embodied intelligence. In robotic systems, LLMs can use natural-language instructions and environmental observations to generate high-level plans and action sequences, providing a flexible interface between language understanding, reasoning, and physical execution. Existing work has explored this idea in navigation, manipulation, and long-horizon task planning~\cite{wang2024robotics}.
 
 However, incorporating LLM-based reasoning into embodied robotic systems introduces an important practical challenge: high-level reasoning is computationally expensive and can incur substantial inference latency. Invoking an LLM too frequently may delay action execution and reduce the responsiveness of the robot, while reasoning too little may lead to incorrect decisions or task failure. Therefore, under limited computational resources, an embodied agent must decide not only how to reason, but also when reasoning is worth its cost.
 
-Liu et al. (2026), in \textit{When Should a Robot Think? Resource-Aware Reasoning via Reinforcement Learning for Embodied Robotic Decision-Making}, formulate this problem as a high-level Markov decision process. Instead of learning low-level robot control, their framework, RARRL, learns an orchestration policy that decides whether the agent should \textbf{Act} directly or \textbf{Think} by invoking an LLM-based reasoning module. The state summarizes the current task context, execution history, and remaining computational budget, while the action additionally determines the reasoning role and computation budget when Think is selected. The policy is trained using PPO with a reward that trades off task completion against reasoning and execution costs.\\
+Liu et al. (2026), in \textit{When Should a Robot Think? Resource-Aware Reasoning via Reinforcement Learning for Embodied Robotic Decision-Making}, formulate this problem as a high-level Markov decision process. Instead of learning low-level robot control, their framework, RARRL, learns an orchestration policy that decides whether the agent should \textbf{Act} directly or \textbf{Think} by invoking an LLM-based reasoning module. The state summarizes the current task context, execution history, and remaining computational budget, while the action additionally determines the reasoning role and computation budget when Think is selected. The policy is trained using PPO with a reward that trades off task completion against reasoning and execution costs.
+
+\section{Technical Issue and Research Question}
 
 A technical issue arises from the question of how to embed the execution history into a low-dimensional state representation. In Appendix A, the authors encode the history using a recurrent network or a pooling layer. This provides a practical way to summarize past interactions, but it does not guarantee that the resulting representation is a sufficient statistic of the full interaction history. Therefore, under partial observability, treating the compressed history representation as part of an MDP state may introduce state aliasing: two different histories that imply different hidden task states may be mapped to similar representations, even though they should lead to different orchestration decisions.
 
-This formulation addresses the question ``When should a robot think?'' I want to extend this perspective by considering a related but different question: \textbf{can a robot learn to act in order to make future reasoning more effective?}
+This formulation addresses the question \emph{When should a robot think?} I want to extend this perspective by considering a related but different question: \textbf{can a robot learn to act in order to make future reasoning more effective?}
 
 In an embodied environment, some actions may have little immediate value for task completion but may improve the information available to the agent. For example, a robot that is uncertain about an object may move to a different viewpoint or inspect the object before performing further reasoning. Such an action does not directly solve the task, but it may create a state in which subsequent reasoning becomes more reliable. This suggests a possible interaction of the form
 \[
@@ -37,6 +65,8 @@ In an embodied environment, some actions may have little immediate value for tas
 
 My tentative goal is therefore to extend resource-aware reasoning orchestration from simply choosing between Act and Think toward learning when an agent should first take an information-gathering action in order to improve the value of subsequent reasoning.
 
+\section{Proposed Formulation and Practical Method}
+
 To address this question, I want to reformulate the original MDP as a partially observable Markov decision process (POMDP). Let $z_t$ denote the underlying task state, which may not be fully observable to the robot. Instead, the robot receives an observation $o_t$ and maintains an interaction history
 \[
 H_t=(o_0,a_0,r_0,\ldots,o_t).
@@ -50,11 +80,11 @@ which represents the robot's uncertainty about the underlying task state. In a s
 Under this formulation, I want to extend the high-level decision space to
 \[
 u_t\in
-\{
+\left\{
 \mathrm{ACT}_{\mathrm{task}},
 \mathrm{ACT}_{\mathrm{info}},
 \mathrm{THINK}(r,c)
-\},
+\right\},
 \]
 where $\mathrm{ACT}_{\mathrm{task}}$ directly progresses toward task completion, $\mathrm{ACT}_{\mathrm{info}}$ primarily gathers information about the environment, and $\mathrm{THINK}(r,c)$ invokes a reasoning module with reasoning role $r$ and computational budget $c$. An information-gathering action may incur an immediate cost without directly increasing task reward, but it can produce a more informative observation and update the belief from $\beta_t$ to $\beta_{t+1}$. This updated belief may then make subsequent reasoning more effective.
 
@@ -100,5 +130,30 @@ o_t,\hat{\beta}_t,B_t
 \right),
 \]
 where $B_t$ denotes the remaining reasoning budget. PPO itself does not need to be fundamentally changed; the main difference is that the policy now conditions on an explicit estimate of the agent's uncertainty rather than only on a recurrent compression of recent history.
+
+\section{References}
+
+\begin{thebibliography}{9}
+\small
+
+\bibitem{wei2022cot}
+J.~Wei, X.~Wang, D.~Schuurmans, M.~Bosma, B.~Ichter, F.~Xia, E.~Chi, Q.~V.~Le, and D.~Zhou.
+\newblock Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.
+\newblock \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
+\newblock \url{https://arxiv.org/abs/2201.11903}.
+
+\bibitem{yao2023react}
+S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, and Y.~Cao.
+\newblock ReAct: Synergizing Reasoning and Acting in Language Models.
+\newblock \emph{International Conference on Learning Representations (ICLR)}, 2023.
+\newblock \url{https://arxiv.org/abs/2210.03629}.
+
+\bibitem{wang2024robotics}
+J.~Wang, Z.~Wu, Y.~Li, H.~Jiang, P.~Shu, E.~Shi, H.~Hu, C.~Ma, Y.~Liu, X.~Wang, Y.~Yao, X.~Liu, H.~Zhao, Z.~Liu, H.~Dai, L.~Zhao, B.~Ge, X.~Li, T.~Liu, and S.~Zhang.
+\newblock Large Language Models for Robotics: Opportunities, Challenges, and Perspectives.
+\newblock \emph{arXiv preprint arXiv:2401.04334}, 2024.
+\newblock \url{https://arxiv.org/abs/2401.04334}.
+
+\end{thebibliography}
 
 \end{document}
