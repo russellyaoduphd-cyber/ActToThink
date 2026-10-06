@@ -47,11 +47,9 @@ However, incorporating LLM-based reasoning into embodied robotic systems introdu
 Liu et al. (2026), in \textit{When Should a Robot Think? Resource-Aware Reasoning via Reinforcement Learning for Embodied Robotic Decision-Making}, formulate this problem as a high-level Markov decision process. Instead of learning low-level robot control, their framework, RARRL, learns an orchestration policy that decides whether the agent should \textbf{Act} directly or \textbf{Think} by invoking an LLM-based reasoning module. The state summarizes the current task context, execution history, and remaining computational budget, while the action additionally determines the reasoning role and computation budget when Think is selected. The policy is trained using PPO with a reward that trades off task completion against reasoning and execution costs.
 
 \section{Technical Issue and Research Question}
-
 A technical issue arises from the question of how to embed the execution history into a low-dimensional state representation. In Appendix A, the authors encode the history using a recurrent network or a pooling layer. This provides a practical way to summarize past interactions, but it does not guarantee that the resulting representation is a sufficient statistic of the full interaction history. Therefore, under partial observability, treating the compressed history representation as part of an MDP state may introduce state aliasing: two different histories that imply different hidden task states may be mapped to similar representations, even though they should lead to different orchestration decisions.
 
-This formulation addresses the question \emph{When should a robot think?} I want to extend this perspective by considering a related but different question: \textbf{can a robot learn to act in order to make future reasoning more effective?}
-
+Separately from this representation issue, the RARRL formulation also suggests a broader question about the role of physical actions in reasoning. While RARRL primarily asks when a robot should think, I want to consider whether a robot can first act to improve the information available for future reasoning.
 In an embodied environment, some actions may have little immediate value for task completion but may improve the information available to the agent. For example, a robot that is uncertain about an object may move to a different viewpoint or inspect the object before performing further reasoning. Such an action does not directly solve the task, but it may create a state in which subsequent reasoning becomes more reliable. This suggests a possible interaction of the form
 \[
 \text{information-gathering action}
@@ -86,7 +84,7 @@ u_t\in
 \mathrm{THINK}(r,c)
 \right\},
 \]
-where $\mathrm{ACT}_{\mathrm{task}}$ directly progresses toward task completion, $\mathrm{ACT}_{\mathrm{info}}$ primarily gathers information about the environment, and $\mathrm{THINK}(r,c)$ invokes a reasoning module with reasoning role $r$ and computational budget $c$. An information-gathering action may incur an immediate cost without directly increasing task reward, but it can produce a more informative observation and update the belief from $\beta_t$ to $\beta_{t+1}$. This updated belief may then make subsequent reasoning more effective.
+where $\mathrm{ACT}_{\mathrm{task}}$ directly progresses toward task completion, $\mathrm{ACT}_{\mathrm{info}}$ primarily gathers information about the environment, and $\mathrm{THINK}(r,c)$ invokes a reasoning module with reasoning role $r$, such as planning or verification,  and computational budget $c$. An information-gathering action may incur an immediate cost without directly increasing task reward, but it can produce a more informative observation and update the belief from $\beta_t$ to $\beta_{t+1}$. This updated belief may then make subsequent reasoning more effective.
 
 In practice, however, the exact Bayesian belief state may be difficult to compute because the transition and observation models of the environment are generally unknown. I therefore propose to use a Transformer-based history encoder to approximate the belief state. The sequence of observations, actions, and outcomes is first embedded and processed using multi-head self-attention,
 \[
@@ -131,7 +129,7 @@ o_t,\hat{\beta}_t,B_t
 \]
 where $B_t$ denotes the remaining reasoning budget. PPO itself does not need to be fundamentally changed; the main difference is that the policy now conditions on an explicit estimate of the agent's uncertainty rather than only on a recurrent compression of recent history.
 
-\section{References}
+\section{}
 
 \begin{thebibliography}{9}
 \small
