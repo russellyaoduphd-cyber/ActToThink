@@ -129,6 +129,9 @@ o_t,\hat{\beta}_t,B_t
 \]
 where $B_t$ denotes the remaining reasoning budget. PPO itself does not need to be fundamentally changed; the main difference is that the policy now conditions on an explicit estimate of the agent's uncertainty rather than only on a recurrent compression of recent history.
 
+
+This project is relevant to the class because it studies how an embodied robot should make high-level decisions when its perception, computational resources, and reasoning capability are limited. Rather than treating an LLM as an external planner that is invoked at every step, the project considers reasoning itself as part of the robot's decision-making process: the robot must decide when to act, when to gather more information, and when additional reasoning is worth its cost. This connects directly to embodied decision-making under uncertainty and to the broader question of how intelligent robots can interact with complex environments in an efficient and adaptive way. The proposed POMDP formulation also provides a principled way to model partial observability, which is a central challenge in real-world robotic systems.
+
 \section{}
 
 \begin{thebibliography}{9}
