@@ -1,5 +1,7 @@
 \documentclass{article}
 \usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{url}
 
 \title{ActToThink}
 \author{Qining Shen}
@@ -10,11 +12,27 @@
 \maketitle
 
 \section{Introduction}
-LLMs' reasoning has experienced huge improvements these days, including Chain of Thought (J. Wei, X. Wang, D. Schuurmans, et al., “Chain-of-thought prompting elicits reasoning in large language models,”), ReAct(https://arxiv.org/abs/2210.03629), and other frameworks. These advances have significantly enhanced the high-level reasoning abilities of agents. Incorporating these advanced reasoning and language comprehension capabilities with embodied intelligence to formulate precise and efficient action plans based on natural language instructions intrigues a lot of attention(some reference). However, a prominent problem emerges: incorporating LLM-based reasoning into embodied robotic systems introduces a critical challenge. Highlevel reasoning is computationally expensive and often incurs
-substantial latency, making it impractical to invoke indiscriminately during task execution (https://arxiv.org/pdf/2401.04334). In real-world robotic
-deployments, excessive reliance on LLM-based reasoning
-can delay action execution and disrupt interaction with the environment, while insufficient reasoning frequently leads to
-incorrect decisions, unsafe behaviors, or task failure. In other words, due to resources limitation, "When to Think" needs to be addressed better. 
-In https://arxiv.org/pdf/2603.16673, the author formulate this high level as a MDP and use PPO to...
-I want to extend this to ...
+Large language models (LLMs) have made rapid progress in reasoning in recent years, with methods such as Chain-of-Thought prompting and ReAct showing that language models can perform multi-step reasoning and interleave reasoning with actions. In particular, ReAct allows an agent to alternate between reasoning traces and interactions with an external environment, making LLMs increasingly relevant to sequential decision-making tasks.
+
+These advances have also motivated increasing interest in combining LLM-based reasoning with embodied intelligence. In robotic systems, LLMs can use natural-language instructions and environmental observations to generate high-level plans and action sequences, providing a flexible interface between language understanding, reasoning, and physical execution. Existing work has explored this idea in navigation, manipulation, and long-horizon task planning.
+
+However, incorporating LLM-based reasoning into embodied robotic systems introduces an important practical challenge: high-level reasoning is computationally expensive and can incur substantial inference latency. Invoking an LLM too frequently may delay action execution and reduce the responsiveness of the robot, while reasoning too little may lead to incorrect decisions or task failure. Therefore, under limited computational resources, an embodied agent must decide not only how to reason, but also when reasoning is worth its cost.
+
+Liu et al. (2026), in \textit{When Should a Robot Think? Resource-Aware Reasoning via Reinforcement Learning for Embodied Robotic Decision-Making}, formulate this problem as a high-level Markov decision process. Instead of learning low-level robot control, their framework, RARRL, learns an orchestration policy that decides whether the agent should \textbf{Act} directly or \textbf{Think} by invoking an LLM-based reasoning module. The state summarizes the current task context, execution history, and remaining computational budget, while the action additionally determines the reasoning role and computation budget when Think is selected. The policy is trained using PPO with a reward that trades off task completion against reasoning and execution costs.
+
+This formulation addresses the question "When should a robot think?" I want to extend this perspective by considering a related but different question: \textbf{can a robot learn to act in order to make future reasoning more effective?}
+
+In an embodied environment, some actions may have little immediate value for task completion but may improve the information available to the agent. For example, a robot that is uncertain about an object may move to a different viewpoint or inspect the object before performing further reasoning. Such an action does not directly solve the task, but it may create a state in which subsequent reasoning becomes more reliable. This suggests a possible interaction of the form
+\[
+\text{information-gathering action}
+\rightarrow
+\text{better observation}
+\rightarrow
+\text{better reasoning}
+\rightarrow
+\text{better task action}.
+\]
+
+My tentative goal is therefore to extend resource-aware reasoning orchestration from simply choosing between Act and Think toward learning when an agent should first take an information-gathering action in order to improve the value of subsequent reasoning.
+
 \end{document}
