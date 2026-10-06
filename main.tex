@@ -100,7 +100,7 @@ q_{\phi}(z_t\mid H_t).
 
 The motivation for using multi-head attention is that different parts of the interaction history may provide different evidence about the latent task state. For example, one attention head may focus on previous execution failures, while another may attend to earlier observations or action outcomes that are relevant to the current uncertainty. Unlike a recurrent representation, information from an earlier interaction does not need to be repeatedly propagated through every intermediate hidden state.
 
-The Transformer representation alone, however, does not guarantee that $h_t$ is a valid belief state. Therefore, an additional belief-estimation objective is needed. In a simulated environment where the latent state $z_t$ is available during training, the belief encoder can be trained to predict the latent state using
+Therefore, if we want the Transformer representation to explicitly approximate a belief state rather than remain an unconstrained history embedding, an additional belief-estimation objective is needed. In a simulated environment where the latent state $z_t$ is available during training, the belief encoder can be trained to estimate the conditional distribution over latent states using
 \[
 \mathcal{L}_{\mathrm{belief}}
 =
@@ -133,7 +133,7 @@ where $B_t$ denotes the remaining reasoning budget. PPO itself does not need to 
 This project is relevant to the class because it studies how an embodied robot should make high-level decisions when its perception, computational resources, and reasoning capability are limited. Rather than treating an LLM as an external planner that is invoked at every step, the project considers reasoning itself as part of the robot's decision-making process: the robot must decide when to act, when to gather more information, and when additional reasoning is worth its cost. This connects directly to embodied decision-making under uncertainty and to the broader question of how intelligent robots can interact with complex environments in an efficient and adaptive way. The proposed POMDP formulation also provides a principled way to model partial observability, which is a central challenge in real-world robotic systems.
 
 \section{Special Note for sharing}
-I am ok with sharing, but I am currently have no group members.
+I am not sure with sharing, but I am currently have no group members.
 
 \section{}
 
