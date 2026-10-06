@@ -18,9 +18,11 @@ These advances have also motivated increasing interest in combining LLM-based re
 
 However, incorporating LLM-based reasoning into embodied robotic systems introduces an important practical challenge: high-level reasoning is computationally expensive and can incur substantial inference latency. Invoking an LLM too frequently may delay action execution and reduce the responsiveness of the robot, while reasoning too little may lead to incorrect decisions or task failure. Therefore, under limited computational resources, an embodied agent must decide not only how to reason, but also when reasoning is worth its cost.
 
-Liu et al. (2026), in \textit{When Should a Robot Think? Resource-Aware Reasoning via Reinforcement Learning for Embodied Robotic Decision-Making}, formulate this problem as a high-level Markov decision process. Instead of learning low-level robot control, their framework, RARRL, learns an orchestration policy that decides whether the agent should \textbf{Act} directly or \textbf{Think} by invoking an LLM-based reasoning module. The state summarizes the current task context, execution history, and remaining computational budget, while the action additionally determines the reasoning role and computation budget when Think is selected. The policy is trained using PPO with a reward that trades off task completion against reasoning and execution costs.
+Liu et al. (2026), in \textit{When Should a Robot Think? Resource-Aware Reasoning via Reinforcement Learning for Embodied Robotic Decision-Making}, formulate this problem as a high-level Markov decision process. Instead of learning low-level robot control, their framework, RARRL, learns an orchestration policy that decides whether the agent should \textbf{Act} directly or \textbf{Think} by invoking an LLM-based reasoning module. The state summarizes the current task context, execution history, and remaining computational budget, while the action additionally determines the reasoning role and computation budget when Think is selected. The policy is trained using PPO with a reward that trades off task completion against reasoning and execution costs.\\
 
-This formulation addresses the question "When should a robot think?" I want to extend this perspective by considering a related but different question: \textbf{can a robot learn to act in order to make future reasoning more effective?}
+A technical issue arises from the question of how to embed the execution history into a low-dimensional state representation. In Appendix A, the authors encode the history using a recurrent network or a pooling layer. This provides a practical way to summarize past interactions, but it does not guarantee that the resulting representation is a sufficient statistic of the full interaction history. Therefore, under partial observability, treating the compressed history representation as part of an MDP state may introduce state aliasing: two different histories that imply different hidden task states may be mapped to similar representations, even though they should lead to different orchestration decisions.
+
+This formulation addresses the question ``When should a robot think?'' I want to extend this perspective by considering a related but different question: \textbf{can a robot learn to act in order to make future reasoning more effective?}
 
 In an embodied environment, some actions may have little immediate value for task completion but may improve the information available to the agent. For example, a robot that is uncertain about an object may move to a different viewpoint or inspect the object before performing further reasoning. Such an action does not directly solve the task, but it may create a state in which subsequent reasoning becomes more reliable. This suggests a possible interaction of the form
 \[
@@ -34,5 +36,69 @@ In an embodied environment, some actions may have little immediate value for tas
 \]
 
 My tentative goal is therefore to extend resource-aware reasoning orchestration from simply choosing between Act and Think toward learning when an agent should first take an information-gathering action in order to improve the value of subsequent reasoning.
+
+To address this question, I want to reformulate the original MDP as a partially observable Markov decision process (POMDP). Let $z_t$ denote the underlying task state, which may not be fully observable to the robot. Instead, the robot receives an observation $o_t$ and maintains an interaction history
+\[
+H_t=(o_0,a_0,r_0,\ldots,o_t).
+\]
+This history induces a belief state
+\[
+\beta_t(z)=P(z_t=z\mid H_t),
+\]
+which represents the robot's uncertainty about the underlying task state. In a standard POMDP, this belief state is a sufficient statistic of the interaction history and can therefore be used as the state of a belief-state MDP.
+
+Under this formulation, I want to extend the high-level decision space to
+\[
+u_t\in
+\{
+\mathrm{ACT}_{\mathrm{task}},
+\mathrm{ACT}_{\mathrm{info}},
+\mathrm{THINK}(r,c)
+\},
+\]
+where $\mathrm{ACT}_{\mathrm{task}}$ directly progresses toward task completion, $\mathrm{ACT}_{\mathrm{info}}$ primarily gathers information about the environment, and $\mathrm{THINK}(r,c)$ invokes a reasoning module with reasoning role $r$ and computational budget $c$. An information-gathering action may incur an immediate cost without directly increasing task reward, but it can produce a more informative observation and update the belief from $\beta_t$ to $\beta_{t+1}$. This updated belief may then make subsequent reasoning more effective.
+
+In practice, however, the exact Bayesian belief state may be difficult to compute because the transition and observation models of the environment are generally unknown. I therefore propose to use a Transformer-based history encoder to approximate the belief state. The sequence of observations, actions, and outcomes is first embedded and processed using multi-head self-attention,
+\[
+h_t =
+\mathrm{Transformer}_{\phi}(H_t),
+\]
+and a belief prediction head maps the resulting representation to an approximate belief
+\[
+\hat{\beta}_t
+=
+q_{\phi}(z_t\mid H_t).
+\]
+
+The motivation for using multi-head attention is that different parts of the interaction history may provide different evidence about the latent task state. For example, one attention head may focus on previous execution failures, while another may attend to earlier observations or action outcomes that are relevant to the current uncertainty. Unlike a recurrent representation, information from an earlier interaction does not need to be repeatedly propagated through every intermediate hidden state.
+
+The Transformer representation alone, however, does not guarantee that $h_t$ is a valid belief state. Therefore, an additional belief-estimation objective is needed. In a simulated environment where the latent state $z_t$ is available during training, the belief encoder can be trained to predict the latent state using
+\[
+\mathcal{L}_{\mathrm{belief}}
+=
+-\log q_{\phi}(z_t\mid H_t).
+\]
+For a small POMDP where the exact Bayesian posterior can be computed, an alternative is to directly match the predicted belief to the true belief,
+\[
+\mathcal{L}_{\mathrm{belief}}
+=
+D_{\mathrm{KL}}
+\left(
+\beta_t
+\Vert
+\hat{\beta}_t
+\right).
+\]
+
+The resulting orchestration policy can then be trained using PPO as
+\[
+\pi_{\theta}
+\left(
+u_t
+\mid
+o_t,\hat{\beta}_t,B_t
+\right),
+\]
+where $B_t$ denotes the remaining reasoning budget. PPO itself does not need to be fundamentally changed; the main difference is that the policy now conditions on an explicit estimate of the agent's uncertainty rather than only on a recurrent compression of recent history.
 
 \end{document}
